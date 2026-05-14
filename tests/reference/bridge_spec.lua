@@ -41,7 +41,7 @@ describe('reference.bridge.copy', function()
 
         assert.stub(setreg_stub).was_not.called()
         assert.stub(notify_stub).was.called(1)
-        assert.stub(notify_stub).was.called_with('reference: nothing to copy', vim.log.levels.WARN)
+        assert.stub(notify_stub).was.called_with('Nothing to copy', vim.log.levels.WARN)
       end)
     end
   end)
