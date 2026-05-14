@@ -1,0 +1,20 @@
+{
+  "runtime": {
+    "version": "LuaJIT"
+  },
+  "workspace": {
+    "library": ["${3rd}/luv/library"],
+    "checkThirdParty": false,
+    "ignoreDir": ["reference", ".tests"]
+  },
+  "diagnostics": {
+    "globals": [
+      "vim",
+      "describe",
+      "it",
+      "before_each",
+      "after_each",
+      "pending"
+    ]
+  }
+}
