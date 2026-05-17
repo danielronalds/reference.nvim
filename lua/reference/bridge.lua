@@ -4,15 +4,6 @@ local DEFAULT_PROCESS_NAMES = { 'claude', 'opencode', 'pi' }
 
 local in_tmux_session, list_panes, direct_match, node_wrapped_match
 
-function M.copy(text)
-  if text == nil or text == '' then
-    vim.notify('Nothing to copy', vim.log.levels.WARN)
-    return
-  end
-
-  vim.fn.setreg('+', text)
-end
-
 function M.send(pane_id, text)
   if pane_id == nil or pane_id == '' then
     vim.notify('No tmux pane to send to', vim.log.levels.WARN)

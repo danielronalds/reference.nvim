@@ -48,9 +48,13 @@ function M._send(inputs)
 
   local agents, reason = bridge.discover_agents({ process_names = config.tmux.process_names })
 
-  if reason then
-    bridge.copy(reference)
-    vim.notify('Copied reference to clipboard (' .. reason .. ')', vim.log.levels.INFO)
+  if reason == 'not in tmux' then
+    vim.notify('Not in a tmux session', vim.log.levels.ERROR)
+    return
+  end
+
+  if reason == 'no agents found' then
+    vim.notify('No agent was found', vim.log.levels.ERROR)
     return
   end
 
