@@ -13,6 +13,44 @@ function M.copy(text)
   vim.fn.setreg('+', text)
 end
 
+function M.send(pane_id, text)
+  if pane_id == nil or pane_id == '' then
+    vim.notify('No tmux pane to send to', vim.log.levels.WARN)
+    return 'no pane'
+  end
+
+  if text == nil or text == '' then
+    vim.notify('Nothing to send', vim.log.levels.WARN)
+    return 'no text'
+  end
+
+  local result = vim.system({ 'tmux', 'send-keys', '-t', pane_id, '-l', text }):wait()
+  if result.code ~= 0 then
+    return 'tmux send-keys failed: ' .. tostring(result.stderr or '')
+  end
+
+  return nil
+end
+
+function M.focus(pane_id)
+  if pane_id == nil or pane_id == '' then
+    vim.notify('No tmux pane to focus', vim.log.levels.WARN)
+    return 'no pane'
+  end
+
+  local select_window = vim.system({ 'tmux', 'select-window', '-t', pane_id }):wait()
+  if select_window.code ~= 0 then
+    return 'tmux select-window failed: ' .. tostring(select_window.stderr or '')
+  end
+
+  local select_pane = vim.system({ 'tmux', 'select-pane', '-t', pane_id }):wait()
+  if select_pane.code ~= 0 then
+    return 'tmux select-pane failed: ' .. tostring(select_pane.stderr or '')
+  end
+
+  return nil
+end
+
 function M.discover_agents(opts)
   opts = opts or {}
   local process_names = opts.process_names or DEFAULT_PROCESS_NAMES
@@ -33,6 +71,8 @@ function M.discover_agents(opts)
         pane_id = pane.pane_id,
         pane_pid = pane.pane_pid,
         session = pane.session,
+        window_index = pane.window_index,
+        pane_index = pane.pane_index,
         window = pane.window,
         command = pane.command,
         matched_name = matched_name,
@@ -62,7 +102,7 @@ function list_panes()
     'list-panes',
     '-s',
     '-F',
-    '#{pane_id}\t#{pane_pid}\t#{session_name}\t#{window_name}\t#{pane_current_command}',
+    '#{pane_id}\t#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_name}\t#{pane_current_command}',
   })
   if result.code ~= 0 then
     return {}
@@ -70,13 +110,15 @@ function list_panes()
 
   local rows = {}
   for line in tostring(result.stdout or ''):gmatch('[^\n]+') do
-    local pane_id, pane_pid, session, window, command =
-      line:match('^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t(.+)$')
+    local pane_id, pane_pid, session, window_index, pane_index, window, command =
+      line:match('^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t(.+)$')
     if pane_id then
       table.insert(rows, {
         pane_id = pane_id,
         pane_pid = tonumber(pane_pid),
         session = session,
+        window_index = tonumber(window_index),
+        pane_index = tonumber(pane_index),
         window = window,
         command = command,
       })
