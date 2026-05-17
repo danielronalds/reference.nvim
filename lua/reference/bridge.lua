@@ -13,6 +13,25 @@ function M.copy(text)
   vim.fn.setreg('+', text)
 end
 
+function M.send(pane_id, text)
+  if pane_id == nil or pane_id == '' then
+    vim.notify('No tmux pane to send to', vim.log.levels.WARN)
+    return 'no pane'
+  end
+
+  if text == nil or text == '' then
+    vim.notify('Nothing to send', vim.log.levels.WARN)
+    return 'no text'
+  end
+
+  local result = vim.system({ 'tmux', 'send-keys', '-t', pane_id, '-l', text }):wait()
+  if result.code ~= 0 then
+    return 'tmux send-keys failed: ' .. tostring(result.stderr or '')
+  end
+
+  return nil
+end
+
 function M.discover_agents(opts)
   opts = opts or {}
   local process_names = opts.process_names or DEFAULT_PROCESS_NAMES
