@@ -80,6 +80,8 @@ local function rows_from(records)
       r.pane_id,
       tostring(r.pane_pid),
       r.session,
+      tostring(r.window_index or 0),
+      tostring(r.pane_index or 0),
       r.window,
       r.command,
     }, '\t'))
@@ -186,10 +188,10 @@ describe('reference.bridge.discover_agents', function()
       assert.are.equal('%1', agents[1].pane_id)
     end)
 
-    it('populates pane_id, pane_pid, session, window, command, and matched_name on each entry', function()
+    it('populates pane_id, pane_pid, session, window_index, pane_index, window, command, and matched_name on each entry', function()
       local bridge = require('reference.bridge')
       local rows = rows_from({
-        { pane_id = '%42', pane_pid = 12345, session = 'work', window = 'editor', command = 'claude' },
+        { pane_id = '%42', pane_pid = 12345, session = 'work', window_index = 2, pane_index = 1, window = 'editor', command = 'claude' },
       })
       system_stub.invokes(make_system_stub({
         display_message = { stdout = 'work\n', code = 0 },
@@ -202,6 +204,8 @@ describe('reference.bridge.discover_agents', function()
       assert.are.equal('%42', agents[1].pane_id)
       assert.are.equal(12345, agents[1].pane_pid)
       assert.are.equal('work', agents[1].session)
+      assert.are.equal(2, agents[1].window_index)
+      assert.are.equal(1, agents[1].pane_index)
       assert.are.equal('editor', agents[1].window)
       assert.are.equal('claude', agents[1].command)
       assert.are.equal('claude', agents[1].matched_name)
