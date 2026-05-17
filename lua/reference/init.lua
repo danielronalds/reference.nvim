@@ -59,6 +59,11 @@ function M._send(inputs)
     return
   end
 
+  if inputs.pick == 'first' then
+    send_and_focus(agents[1], reference)
+    return
+  end
+
   vim.ui.select(agents, {
     prompt = 'Send reference to:',
     format_item = format_agent,
@@ -80,6 +85,15 @@ function M.setup(opts)
       range = { line1 = cmd_opts.line1, line2 = cmd_opts.line2 }
     end
     M._send({ path = path, range = range })
+  end, { range = true, force = true })
+
+  vim.api.nvim_create_user_command('ReferenceSendFirst', function(cmd_opts)
+    local path = vim.fn.fnamemodify(vim.fn.expand('%:p'), ':~:.')
+    local range = nil
+    if cmd_opts.range == 2 then
+      range = { line1 = cmd_opts.line1, line2 = cmd_opts.line2 }
+    end
+    M._send({ path = path, range = range, pick = 'first' })
   end, { range = true, force = true })
 end
 
