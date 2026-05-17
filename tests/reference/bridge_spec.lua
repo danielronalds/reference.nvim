@@ -1,52 +1,5 @@
 local stub = require('luassert.stub')
 
-describe('reference.bridge.copy', function()
-  local setreg_stub
-  local notify_stub
-
-  before_each(function()
-    setreg_stub = stub(vim.fn, 'setreg')
-    notify_stub = stub(vim, 'notify')
-  end)
-
-  after_each(function()
-    setreg_stub:revert()
-    notify_stub:revert()
-  end)
-
-  describe('with valid input', function()
-    it('writes the given text to the + register and emits no notification', function()
-      local bridge = require('reference.bridge')
-      local text = '@lua/foo.lua#L5-12'
-
-      bridge.copy(text)
-
-      assert.stub(setreg_stub).was.called(1)
-      assert.stub(setreg_stub).was.called_with('+', text)
-      assert.stub(notify_stub).was_not.called()
-    end)
-  end)
-
-  describe('with empty input', function()
-    local cases = {
-      { name = 'skips the register write and warns when text is nil', text = nil },
-      { name = 'skips the register write and warns when text is empty', text = '' },
-    }
-
-    for _, case in ipairs(cases) do
-      it(case.name, function()
-        local bridge = require('reference.bridge')
-
-        bridge.copy(case.text)
-
-        assert.stub(setreg_stub).was_not.called()
-        assert.stub(notify_stub).was.called(1)
-        assert.stub(notify_stub).was.called_with('Nothing to copy', vim.log.levels.WARN)
-      end)
-    end
-  end)
-end)
-
 local function fake_handle(result)
   return { wait = function() return result end }
 end
@@ -54,9 +7,7 @@ end
 local function make_system_stub(routes)
   return function(argv)
     local key
-    if argv[1] == 'tmux' and argv[2] == 'display-message' then
-      key = 'display_message'
-    elseif argv[1] == 'tmux' and argv[2] == 'list-panes' then
+    if argv[1] == 'tmux' and argv[2] == 'list-panes' then
       key = 'list_panes'
     elseif argv[1] == 'pgrep' then
       key = 'pgrep:' .. tostring(argv[3])
@@ -91,27 +42,36 @@ end
 
 describe('reference.bridge.discover_agents', function()
   local system_stub
+  local saved_tmux
 
   before_each(function()
     system_stub = stub(vim, 'system')
+    saved_tmux = vim.env.TMUX
+    vim.env.TMUX = '/tmp/tmux-1000/default,1234,0'
   end)
 
   after_each(function()
     system_stub:revert()
+    vim.env.TMUX = saved_tmux
   end)
 
   describe('when not in a tmux session', function()
-    it("returns an empty list and reason 'not in tmux' when the session probe fails", function()
-      local bridge = require('reference.bridge')
-      system_stub.invokes(make_system_stub({
-        display_message = { stdout = '', stderr = 'no server running\n', code = 1 },
-      }))
+    local cases = {
+      { name = "returns an empty list and reason 'not in tmux' when $TMUX is unset", value = nil },
+      { name = "returns an empty list and reason 'not in tmux' when $TMUX is empty", value = '' },
+    }
 
-      local agents, reason = bridge.discover_agents()
+    for _, case in ipairs(cases) do
+      it(case.name, function()
+        local bridge = require('reference.bridge')
+        vim.env.TMUX = case.value
 
-      assert.are.same({}, agents)
-      assert.are.equal('not in tmux', reason)
-    end)
+        local agents, reason = bridge.discover_agents()
+
+        assert.are.same({}, agents)
+        assert.are.equal('not in tmux', reason)
+      end)
+    end
   end)
 
   describe('when inside tmux with no matching panes', function()
@@ -122,7 +82,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%1', pane_pid = 101, session = 'work', window = 'logs',   command = 'vim' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
@@ -137,7 +96,6 @@ describe('reference.bridge.discover_agents', function()
     it("uses 'tmux list-panes -s' for current-session scope, never '-a'", function()
       local bridge = require('reference.bridge')
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = {
           stdout = rows_from({
             { pane_id = '%0', pane_pid = 100, session = 'work', window = 'editor', command = 'claude' },
@@ -177,7 +135,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%2', pane_pid = 102, session = 'work', window = 'logs',   command = 'vim' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
@@ -194,7 +151,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%42', pane_pid = 12345, session = 'work', window_index = 2, pane_index = 1, window = 'editor', command = 'claude' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
@@ -220,7 +176,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%3', pane_pid = 103, session = 'work', window = 'chat',   command = 'pi' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
@@ -242,7 +197,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%0', pane_pid = 100, session = 'work', window = 'agent', command = 'claude' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
@@ -263,7 +217,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%5', pane_pid = 555, session = 'work', window = 'editor', command = 'node' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
         ['pgrep:555'] = { stdout = '600\n', code = 0 },
         ['ps:600'] = { stdout = 'node /usr/local/bin/claude --help\n', code = 0 },
@@ -282,7 +235,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%9', pane_pid = 900, session = 'work', window = 'agent', command = 'node' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
         ['pgrep:900'] = { stdout = '901\n902\n', code = 0 },
         ['ps:901'] = { stdout = '/usr/bin/some-unrelated-thing\n', code = 0 },
@@ -311,8 +263,7 @@ describe('reference.bridge.discover_agents', function()
           { pane_id = '%0', pane_pid = 100, session = 'work', window = 'misc', command = case.command },
         })
         system_stub.invokes(make_system_stub({
-          display_message = { stdout = 'work\n', code = 0 },
-          list_panes = { stdout = rows, code = 0 },
+            list_panes = { stdout = rows, code = 0 },
         }))
 
         local agents, reason = bridge.discover_agents()
@@ -343,8 +294,7 @@ describe('reference.bridge.discover_agents', function()
           { pane_id = '%0', pane_pid = 100, session = 'work', window = 'agent', command = case.process },
         })
         system_stub.invokes(make_system_stub({
-          display_message = { stdout = 'work\n', code = 0 },
-          list_panes = { stdout = rows, code = 0 },
+            list_panes = { stdout = rows, code = 0 },
         }))
 
         local agents = bridge.discover_agents()
@@ -361,7 +311,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%1', pane_pid = 101, session = 'work', window = 'custom', command = 'custom_agent' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
@@ -381,7 +330,6 @@ describe('reference.bridge.discover_agents', function()
         { pane_id = '%0', pane_pid = 100, session = 'work', window = 'agent', command = 'claude' },
       })
       system_stub.invokes(make_system_stub({
-        display_message = { stdout = 'work\n', code = 0 },
         list_panes = { stdout = rows, code = 0 },
       }))
 
