@@ -388,3 +388,92 @@ describe('reference.bridge.discover_agents', function()
     end)
   end)
 end)
+
+describe('reference.bridge.send', function()
+  local system_stub
+  local notify_stub
+
+  before_each(function()
+    system_stub = stub(vim, 'system')
+    notify_stub = stub(vim, 'notify')
+  end)
+
+  after_each(function()
+    system_stub:revert()
+    notify_stub:revert()
+  end)
+
+  local function send_keys_result(result)
+    system_stub.invokes(function(argv)
+      if argv[1] == 'tmux' and argv[2] == 'send-keys' then
+        return fake_handle(result)
+      end
+      error('unexpected vim.system call: ' .. vim.inspect(argv))
+    end)
+  end
+
+  describe('with valid input', function()
+    it('writes the given text to the target pane via tmux send-keys -t <pane_id> -l <text>', function()
+      local bridge = require('reference.bridge')
+      send_keys_result({ stdout = '', code = 0 })
+
+      bridge.send('%1', '@lua/foo.lua#L5-12')
+
+      assert.stub(system_stub).was.called(1)
+      local argv = system_stub.calls[1].vals[1]
+      assert.are.same({ 'tmux', 'send-keys', '-t', '%1', '-l', '@lua/foo.lua#L5-12' }, argv)
+    end)
+
+    it('returns ok (nil reason) when tmux exits 0', function()
+      local bridge = require('reference.bridge')
+      send_keys_result({ stdout = '', code = 0 })
+
+      local reason = bridge.send('%1', '@lua/foo.lua')
+
+      assert.is_nil(reason)
+    end)
+
+    it('returns a reason string when tmux exits non-zero', function()
+      local bridge = require('reference.bridge')
+      send_keys_result({ stdout = '', stderr = "can't find pane\n", code = 1 })
+
+      local reason = bridge.send('%bogus', '@lua/foo.lua')
+
+      assert.is_string(reason)
+    end)
+
+    it('passes the literal flag -l so special characters in the reference are not interpreted as tmux key names', function()
+      local bridge = require('reference.bridge')
+      send_keys_result({ stdout = '', code = 0 })
+
+      bridge.send('%1', '@lua/foo.lua')
+
+      local argv = system_stub.calls[1].vals[1]
+      local saw_literal = false
+      for _, arg in ipairs(argv) do
+        if arg == '-l' then saw_literal = true end
+      end
+      assert.is_true(saw_literal)
+    end)
+  end)
+
+  describe('with empty input', function()
+    local cases = {
+      { name = 'skips the tmux call and warns when text is nil',     pane_id = '%1', text = nil },
+      { name = 'skips the tmux call and warns when text is empty',   pane_id = '%1', text = '' },
+      { name = 'skips the tmux call and warns when pane_id is nil',  pane_id = nil,  text = '@x' },
+      { name = 'skips the tmux call and warns when pane_id is empty', pane_id = '',  text = '@x' },
+    }
+
+    for _, case in ipairs(cases) do
+      it(case.name, function()
+        local bridge = require('reference.bridge')
+
+        bridge.send(case.pane_id, case.text)
+
+        assert.stub(system_stub).was_not.called()
+        assert.stub(notify_stub).was.called(1)
+      end)
+    end
+  end)
+end)
