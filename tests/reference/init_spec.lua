@@ -162,6 +162,98 @@ describe('reference._send dispatch', function()
       end)
     end
   end)
+
+  describe("pick = 'first'", function()
+    local agents = {
+      { pane_id = '%1', session = 'work', window = 'one', command = 'claude',   matched_name = 'claude' },
+      { pane_id = '%2', session = 'work', window = 'two', command = 'opencode', matched_name = 'opencode' },
+    }
+
+    it("with multiple agents, calls bridge.send with the first agent's pane_id and the reference", function()
+      discover_stub.returns(agents, nil)
+
+      reference._send({ path = 'lua/foo.lua', pick = 'first' })
+
+      assert.stub(send_stub).was.called(1)
+      assert.stub(send_stub).was.called_with('%1', '@lua/foo.lua')
+    end)
+
+    it('with multiple agents, does not call vim.ui.select', function()
+      discover_stub.returns(agents, nil)
+
+      reference._send({ path = 'lua/foo.lua', pick = 'first' })
+
+      assert.stub(ui_select_stub).was_not.called()
+    end)
+
+    it("with multiple agents and switch_to_target = true, calls bridge.focus with the first agent's pane_id", function()
+      reference.setup({ tmux = { switch_to_target = true } })
+      discover_stub.returns(agents, nil)
+      send_stub.returns(nil)
+
+      reference._send({ path = 'lua/foo.lua', pick = 'first' })
+
+      assert.stub(focus_stub).was.called(1)
+      assert.stub(focus_stub).was.called_with('%1')
+    end)
+
+    it('with multiple agents and switch_to_target = false, does not call bridge.focus', function()
+      reference.setup({ tmux = { switch_to_target = false } })
+      discover_stub.returns(agents, nil)
+      send_stub.returns(nil)
+
+      reference._send({ path = 'lua/foo.lua', pick = 'first' })
+
+      assert.stub(focus_stub).was_not.called()
+    end)
+
+    it("with exactly one agent, calls bridge.send with that agent's pane_id", function()
+      discover_stub.returns({
+        { pane_id = '%7', session = 'work', window = 'agent', command = 'claude', matched_name = 'claude' },
+      }, nil)
+
+      reference._send({ path = 'lua/foo.lua', pick = 'first' })
+
+      assert.stub(send_stub).was.called(1)
+      assert.stub(send_stub).was.called_with('%7', '@lua/foo.lua')
+    end)
+
+    local clipboard_cases = {
+      { name = "with reason 'no agents found', copies the reference to the clipboard and notifies", reason = 'no agents found' },
+      { name = "with reason 'not in tmux', copies the reference to the clipboard and notifies",     reason = 'not in tmux' },
+    }
+
+    for _, case in ipairs(clipboard_cases) do
+      it(case.name, function()
+        discover_stub.returns({}, case.reason)
+
+        reference._send({ path = 'lua/foo.lua', pick = 'first' })
+
+        assert.stub(copy_stub).was.called(1)
+        assert.stub(copy_stub).was.called_with('@lua/foo.lua')
+        assert.stub(send_stub).was_not.called()
+        assert.stub(notify_stub).was.called()
+      end)
+    end
+
+    it('with an empty resolved path, notifies the user and does not call bridge.send or bridge.copy', function()
+      reference._send({ path = '', pick = 'first' })
+
+      assert.stub(send_stub).was_not.called()
+      assert.stub(copy_stub).was_not.called()
+      assert.stub(notify_stub).was.called()
+      assert.stub(discover_stub).was_not.called()
+    end)
+
+    it("when pick is omitted, multi-agent dispatch still routes through vim.ui.select", function()
+      discover_stub.returns(agents, nil)
+
+      reference._send({ path = 'lua/foo.lua' })
+
+      assert.stub(ui_select_stub).was.called(1)
+      assert.stub(send_stub).was_not.called()
+    end)
+  end)
 end)
 
 describe('reference.setup config merging', function()
