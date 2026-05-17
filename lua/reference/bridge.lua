@@ -71,6 +71,8 @@ function M.discover_agents(opts)
         pane_id = pane.pane_id,
         pane_pid = pane.pane_pid,
         session = pane.session,
+        window_index = pane.window_index,
+        pane_index = pane.pane_index,
         window = pane.window,
         command = pane.command,
         matched_name = matched_name,
@@ -100,7 +102,7 @@ function list_panes()
     'list-panes',
     '-s',
     '-F',
-    '#{pane_id}\t#{pane_pid}\t#{session_name}\t#{window_name}\t#{pane_current_command}',
+    '#{pane_id}\t#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_name}\t#{pane_current_command}',
   })
   if result.code ~= 0 then
     return {}
@@ -108,13 +110,15 @@ function list_panes()
 
   local rows = {}
   for line in tostring(result.stdout or ''):gmatch('[^\n]+') do
-    local pane_id, pane_pid, session, window, command =
-      line:match('^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t(.+)$')
+    local pane_id, pane_pid, session, window_index, pane_index, window, command =
+      line:match('^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t(.+)$')
     if pane_id then
       table.insert(rows, {
         pane_id = pane_id,
         pane_pid = tonumber(pane_pid),
         session = session,
+        window_index = tonumber(window_index),
+        pane_index = tonumber(pane_index),
         window = window,
         command = command,
       })
