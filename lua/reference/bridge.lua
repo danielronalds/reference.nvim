@@ -83,8 +83,8 @@ local function run(argv)
 end
 
 function in_tmux_session()
-  local result = run({ 'tmux', 'display-message', '-p', '#{session_name}' })
-  return result.code == 0
+  local tmux = vim.env.TMUX
+  return tmux ~= nil and tmux ~= ''
 end
 
 function list_panes()
