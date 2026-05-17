@@ -477,3 +477,106 @@ describe('reference.bridge.send', function()
     end
   end)
 end)
+
+describe('reference.bridge.focus', function()
+  local system_stub
+  local notify_stub
+
+  before_each(function()
+    system_stub = stub(vim, 'system')
+    notify_stub = stub(vim, 'notify')
+  end)
+
+  after_each(function()
+    system_stub:revert()
+    notify_stub:revert()
+  end)
+
+  local function focus_routes(routes)
+    system_stub.invokes(function(argv)
+      local key
+      if argv[1] == 'tmux' and argv[2] == 'select-window' then
+        key = 'select_window'
+      elseif argv[1] == 'tmux' and argv[2] == 'select-pane' then
+        key = 'select_pane'
+      end
+
+      local route = routes[key]
+      if route == nil then
+        error('unexpected vim.system call: ' .. vim.inspect(argv))
+      end
+
+      return fake_handle(route)
+    end)
+  end
+
+  describe('with valid input', function()
+    it('runs tmux select-window -t <pane_id> then tmux select-pane -t <pane_id>', function()
+      local bridge = require('reference.bridge')
+      focus_routes({
+        select_window = { stdout = '', code = 0 },
+        select_pane = { stdout = '', code = 0 },
+      })
+
+      bridge.focus('%1')
+
+      assert.stub(system_stub).was.called(2)
+      assert.are.same({ 'tmux', 'select-window', '-t', '%1' }, system_stub.calls[1].vals[1])
+      assert.are.same({ 'tmux', 'select-pane', '-t', '%1' }, system_stub.calls[2].vals[1])
+    end)
+
+    it('returns ok (nil reason) when both tmux calls exit 0', function()
+      local bridge = require('reference.bridge')
+      focus_routes({
+        select_window = { stdout = '', code = 0 },
+        select_pane = { stdout = '', code = 0 },
+      })
+
+      local reason = bridge.focus('%1')
+
+      assert.is_nil(reason)
+    end)
+
+    it('returns a reason string when select-window fails', function()
+      local bridge = require('reference.bridge')
+      focus_routes({
+        select_window = { stdout = '', stderr = "can't find window\n", code = 1 },
+        select_pane = { stdout = '', code = 0 },
+      })
+
+      local reason = bridge.focus('%bogus')
+
+      assert.is_string(reason)
+    end)
+
+    it('returns a reason string when select-pane fails', function()
+      local bridge = require('reference.bridge')
+      focus_routes({
+        select_window = { stdout = '', code = 0 },
+        select_pane = { stdout = '', stderr = "can't find pane\n", code = 1 },
+      })
+
+      local reason = bridge.focus('%bogus')
+
+      assert.is_string(reason)
+    end)
+  end)
+
+  describe('with empty input', function()
+    local cases = {
+      { name = 'skips the tmux calls and warns when pane_id is nil',   pane_id = nil },
+      { name = 'skips the tmux calls and warns when pane_id is empty', pane_id = '' },
+    }
+
+    for _, case in ipairs(cases) do
+      it(case.name, function()
+        local bridge = require('reference.bridge')
+
+        bridge.focus(case.pane_id)
+
+        assert.stub(system_stub).was_not.called()
+        assert.stub(notify_stub).was.called(1)
+      end)
+    end
+  end)
+end)
