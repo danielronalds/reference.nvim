@@ -8,14 +8,13 @@ end
 describe('reference._send dispatch', function()
   local bridge = require('reference.bridge')
   local reference
-  local discover_stub, send_stub, focus_stub, copy_stub
+  local discover_stub, send_stub, focus_stub
   local notify_stub, ui_select_stub, create_command_stub
 
   before_each(function()
     discover_stub = stub(bridge, 'discover_agents')
     send_stub = stub(bridge, 'send')
     focus_stub = stub(bridge, 'focus')
-    copy_stub = stub(bridge, 'copy')
     notify_stub = stub(vim, 'notify')
     ui_select_stub = stub(vim.ui, 'select')
     create_command_stub = stub(vim.api, 'nvim_create_user_command')
@@ -28,7 +27,6 @@ describe('reference._send dispatch', function()
     discover_stub:revert()
     send_stub:revert()
     focus_stub:revert()
-    copy_stub:revert()
     notify_stub:revert()
     ui_select_stub:revert()
     create_command_stub:revert()
@@ -46,10 +44,10 @@ describe('reference._send dispatch', function()
     end)
   end)
 
-  describe('clipboard fallbacks', function()
+  describe('no-agent toasts', function()
     local cases = {
-      { name = "when not in tmux, copies the reference to the clipboard and notifies the user",      reason = 'not in tmux' },
-      { name = "when no agents are discovered, copies the reference to the clipboard and notifies", reason = 'no agents found' },
+      { name = "when not in tmux, notifies with the tmux-specific error",     reason = 'not in tmux',     message = 'Not in a tmux session' },
+      { name = "when no agents are discovered, notifies with the no-agent error", reason = 'no agents found', message = 'No agent was found' },
     }
 
     for _, case in ipairs(cases) do
@@ -58,10 +56,9 @@ describe('reference._send dispatch', function()
 
         reference._send({ path = 'lua/foo.lua' })
 
-        assert.stub(copy_stub).was.called(1)
-        assert.stub(copy_stub).was.called_with('@lua/foo.lua')
+        assert.stub(notify_stub).was.called(1)
+        assert.stub(notify_stub).was.called_with(case.message, vim.log.levels.ERROR)
         assert.stub(send_stub).was_not.called()
-        assert.stub(notify_stub).was.called()
       end)
     end
   end)
@@ -132,7 +129,7 @@ describe('reference._send dispatch', function()
       assert.stub(send_stub).was.called_with('%2', '@lua/foo.lua')
     end)
 
-    it('when the user cancels vim.ui.select, does not call bridge.send and does not fall back to clipboard', function()
+    it('when the user cancels vim.ui.select, does not call bridge.send', function()
       discover_stub.returns(agents, nil)
       ui_select_stub.invokes(function(_items, _opts, on_choice)
         on_choice(nil)
@@ -141,14 +138,13 @@ describe('reference._send dispatch', function()
       reference._send({ path = 'lua/foo.lua' })
 
       assert.stub(send_stub).was_not.called()
-      assert.stub(copy_stub).was_not.called()
     end)
   end)
 
   describe('with no resolved path', function()
     local cases = {
-      { name = 'notifies and does not send or copy when path is nil',   path = nil },
-      { name = 'notifies and does not send or copy when path is empty', path = '' },
+      { name = 'notifies and does not send when path is nil',   path = nil },
+      { name = 'notifies and does not send when path is empty', path = '' },
     }
 
     for _, case in ipairs(cases) do
@@ -156,7 +152,6 @@ describe('reference._send dispatch', function()
         reference._send({ path = case.path })
 
         assert.stub(send_stub).was_not.called()
-        assert.stub(copy_stub).was_not.called()
         assert.stub(notify_stub).was.called()
         assert.stub(discover_stub).was_not.called()
       end)
@@ -218,29 +213,27 @@ describe('reference._send dispatch', function()
       assert.stub(send_stub).was.called_with('%7', '@lua/foo.lua')
     end)
 
-    local clipboard_cases = {
-      { name = "with reason 'no agents found', copies the reference to the clipboard and notifies", reason = 'no agents found' },
-      { name = "with reason 'not in tmux', copies the reference to the clipboard and notifies",     reason = 'not in tmux' },
+    local no_agent_cases = {
+      { name = "with reason 'no agents found', notifies with the no-agent error and does not send", reason = 'no agents found', message = 'No agent was found' },
+      { name = "with reason 'not in tmux', notifies with the tmux-specific error and does not send", reason = 'not in tmux',     message = 'Not in a tmux session' },
     }
 
-    for _, case in ipairs(clipboard_cases) do
+    for _, case in ipairs(no_agent_cases) do
       it(case.name, function()
         discover_stub.returns({}, case.reason)
 
         reference._send({ path = 'lua/foo.lua', pick = 'first' })
 
-        assert.stub(copy_stub).was.called(1)
-        assert.stub(copy_stub).was.called_with('@lua/foo.lua')
+        assert.stub(notify_stub).was.called(1)
+        assert.stub(notify_stub).was.called_with(case.message, vim.log.levels.ERROR)
         assert.stub(send_stub).was_not.called()
-        assert.stub(notify_stub).was.called()
       end)
     end
 
-    it('with an empty resolved path, notifies the user and does not call bridge.send or bridge.copy', function()
+    it('with an empty resolved path, notifies the user and does not call bridge.send', function()
       reference._send({ path = '', pick = 'first' })
 
       assert.stub(send_stub).was_not.called()
-      assert.stub(copy_stub).was_not.called()
       assert.stub(notify_stub).was.called()
       assert.stub(discover_stub).was_not.called()
     end)
@@ -259,14 +252,13 @@ end)
 describe('reference.setup config merging', function()
   local bridge = require('reference.bridge')
   local reference
-  local discover_stub, send_stub, focus_stub, copy_stub
+  local discover_stub, send_stub, focus_stub
   local notify_stub, ui_select_stub, create_command_stub
 
   before_each(function()
     discover_stub = stub(bridge, 'discover_agents')
     send_stub = stub(bridge, 'send')
     focus_stub = stub(bridge, 'focus')
-    copy_stub = stub(bridge, 'copy')
     notify_stub = stub(vim, 'notify')
     ui_select_stub = stub(vim.ui, 'select')
     create_command_stub = stub(vim.api, 'nvim_create_user_command')
@@ -278,7 +270,6 @@ describe('reference.setup config merging', function()
     discover_stub:revert()
     send_stub:revert()
     focus_stub:revert()
-    copy_stub:revert()
     notify_stub:revert()
     ui_select_stub:revert()
     create_command_stub:revert()
