@@ -32,6 +32,25 @@ function M.send(pane_id, text)
   return nil
 end
 
+function M.focus(pane_id)
+  if pane_id == nil or pane_id == '' then
+    vim.notify('No tmux pane to focus', vim.log.levels.WARN)
+    return 'no pane'
+  end
+
+  local select_window = vim.system({ 'tmux', 'select-window', '-t', pane_id }):wait()
+  if select_window.code ~= 0 then
+    return 'tmux select-window failed: ' .. tostring(select_window.stderr or '')
+  end
+
+  local select_pane = vim.system({ 'tmux', 'select-pane', '-t', pane_id }):wait()
+  if select_pane.code ~= 0 then
+    return 'tmux select-pane failed: ' .. tostring(select_pane.stderr or '')
+  end
+
+  return nil
+end
+
 function M.discover_agents(opts)
   opts = opts or {}
   local process_names = opts.process_names or DEFAULT_PROCESS_NAMES
