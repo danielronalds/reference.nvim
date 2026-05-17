@@ -14,7 +14,13 @@ local config = vim.deepcopy(DEFAULT_CONFIG)
 
 local function format_agent(agent)
   local name = agent.matched_name or agent.command or '?'
-  return string.format('%s (%s:%s)', name, agent.session or '?', agent.window or '?')
+  local address = string.format(
+    '%s:%s.%s',
+    agent.session or '?',
+    tostring(agent.window_index or '?'),
+    tostring(agent.pane_index or '?')
+  )
+  return string.format('%s  %s (%s)', name, address, agent.window or '?')
 end
 
 local function send_and_focus(agent, reference)
