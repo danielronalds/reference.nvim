@@ -45,10 +45,10 @@ describe('reference._send dispatch', function()
   end)
 
   describe('no-agent toasts', function()
-    local constants = require('reference.constants')
+    local errors = require('reference.errors')
     local cases = {
-      { name = "when not in tmux, notifies with the tmux-specific error",     reason = constants.NOT_IN_TMUX,     message = 'Not in a tmux session' },
-      { name = "when no agents are discovered, notifies with the no-agent error", reason = constants.NO_AGENTS_FOUND, message = 'No agent was found' },
+      { name = "when not in tmux, notifies with the tmux-specific error",     reason = errors.NOT_IN_TMUX,     message = 'Not in a tmux session' },
+      { name = "when no agents are discovered, notifies with the no-agent error", reason = errors.NO_AGENTS_FOUND, message = 'No agent was found' },
     }
 
     for _, case in ipairs(cases) do
@@ -214,10 +214,10 @@ describe('reference._send dispatch', function()
       assert.stub(send_stub).was.called_with('%7', '@lua/foo.lua')
     end)
 
-    local constants = require('reference.constants')
+    local errors = require('reference.errors')
     local no_agent_cases = {
-      { name = "with reason NO_AGENTS_FOUND, notifies with the no-agent error and does not send", reason = constants.NO_AGENTS_FOUND, message = 'No agent was found' },
-      { name = "with reason NOT_IN_TMUX, notifies with the tmux-specific error and does not send", reason = constants.NOT_IN_TMUX,     message = 'Not in a tmux session' },
+      { name = "with reason NO_AGENTS_FOUND, notifies with the no-agent error and does not send", reason = errors.NO_AGENTS_FOUND, message = 'No agent was found' },
+      { name = "with reason NOT_IN_TMUX, notifies with the tmux-specific error and does not send", reason = errors.NOT_IN_TMUX,     message = 'Not in a tmux session' },
     }
 
     for _, case in ipairs(no_agent_cases) do
@@ -278,8 +278,8 @@ describe('reference.setup config merging', function()
   end)
 
   it('merges user-supplied tmux.process_names over the defaults', function()
-    local constants = require('reference.constants')
-    discover_stub.returns({}, constants.NO_AGENTS_FOUND)
+    local errors = require('reference.errors')
+    discover_stub.returns({}, errors.NO_AGENTS_FOUND)
 
     reference.setup({ tmux = { process_names = { 'custom_agent' } } })
     reference._send({ path = 'lua/foo.lua' })
@@ -301,8 +301,8 @@ describe('reference.setup config merging', function()
   end)
 
   it('forwards the configured process_names to bridge.discover_agents', function()
-    local constants = require('reference.constants')
-    discover_stub.returns({}, constants.NO_AGENTS_FOUND)
+    local errors = require('reference.errors')
+    discover_stub.returns({}, errors.NO_AGENTS_FOUND)
 
     reference.setup({})
     reference._send({ path = 'lua/foo.lua' })

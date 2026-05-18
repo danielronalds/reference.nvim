@@ -64,13 +64,13 @@ describe('reference.bridge.discover_agents', function()
     for _, case in ipairs(cases) do
       it(case.name, function()
         local bridge = require('reference.bridge')
-        local constants = require('reference.constants')
+        local errors = require('reference.errors')
         vim.env.TMUX = case.value
 
         local agents, reason = bridge.discover_agents()
 
         assert.are.same({}, agents)
-        assert.are.equal(constants.NOT_IN_TMUX, reason)
+        assert.are.equal(errors.NOT_IN_TMUX, reason)
       end)
     end
   end)
@@ -78,7 +78,7 @@ describe('reference.bridge.discover_agents', function()
   describe('when inside tmux with no matching panes', function()
     it('returns an empty list and reason NO_AGENTS_FOUND when list-panes rows do not match', function()
       local bridge = require('reference.bridge')
-      local constants = require('reference.constants')
+      local errors = require('reference.errors')
       local rows = rows_from({
         { pane_id = '%0', pane_pid = 100, session = 'work', window = 'editor', command = 'zsh' },
         { pane_id = '%1', pane_pid = 101, session = 'work', window = 'logs',   command = 'vim' },
@@ -90,7 +90,7 @@ describe('reference.bridge.discover_agents', function()
       local agents, reason = bridge.discover_agents()
 
       assert.are.same({}, agents)
-      assert.are.equal(constants.NO_AGENTS_FOUND, reason)
+      assert.are.equal(errors.NO_AGENTS_FOUND, reason)
     end)
   end)
 
@@ -261,7 +261,7 @@ describe('reference.bridge.discover_agents', function()
     for _, case in ipairs(non_node_cases) do
       it(case.name, function()
         local bridge = require('reference.bridge')
-        local constants = require('reference.constants')
+        local errors = require('reference.errors')
         local rows = rows_from({
           { pane_id = '%0', pane_pid = 100, session = 'work', window = 'misc', command = case.command },
         })
@@ -272,7 +272,7 @@ describe('reference.bridge.discover_agents', function()
         local agents, reason = bridge.discover_agents()
 
         assert.are.same({}, agents)
-        assert.are.equal(constants.NO_AGENTS_FOUND, reason)
+        assert.are.equal(errors.NO_AGENTS_FOUND, reason)
 
         for _, call in ipairs(system_stub.calls) do
           local argv = call.vals[1]

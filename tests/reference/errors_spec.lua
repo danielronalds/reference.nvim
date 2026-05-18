@@ -1,4 +1,4 @@
-describe('reference.constants', function()
+describe('reference.errors', function()
   local cases = {
     { name = 'NOT_IN_TMUX equals not_in_tmux',         key = 'NOT_IN_TMUX',     value = 'not_in_tmux' },
     { name = 'NO_AGENTS_FOUND equals no_agents_found', key = 'NO_AGENTS_FOUND', value = 'no_agents_found' },
@@ -6,9 +6,9 @@ describe('reference.constants', function()
 
   for _, case in ipairs(cases) do
     it(case.name, function()
-      local constants = require('reference.constants')
+      local errors = require('reference.errors')
 
-      local actual = constants[case.key]
+      local actual = errors[case.key]
 
       assert.are.equal(case.value, actual)
     end)

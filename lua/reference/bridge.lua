@@ -1,5 +1,7 @@
 local M = {}
 
+local errors = require('reference.errors')
+
 local DEFAULT_PROCESS_NAMES = { 'claude', 'opencode', 'pi' }
 
 local in_tmux_session, list_panes, direct_match, node_wrapped_match
@@ -47,7 +49,7 @@ function M.discover_agents(opts)
   local process_names = opts.process_names or DEFAULT_PROCESS_NAMES
 
   if not in_tmux_session() then
-    return {}, 'not in tmux'
+    return {}, errors.NOT_IN_TMUX
   end
 
   local agents = {}
@@ -72,7 +74,7 @@ function M.discover_agents(opts)
   end
 
   if #agents == 0 then
-    return {}, 'no agents found'
+    return {}, errors.NO_AGENTS_FOUND
   end
 
   return agents, nil

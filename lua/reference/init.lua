@@ -2,6 +2,7 @@ local M = {}
 
 local context = require('reference.context')
 local bridge = require('reference.bridge')
+local errors = require('reference.errors')
 
 local DEFAULT_CONFIG = {
   tmux = {
@@ -48,12 +49,12 @@ function M._send(inputs)
 
   local agents, reason = bridge.discover_agents({ process_names = config.tmux.process_names })
 
-  if reason == 'not in tmux' then
+  if reason == errors.NOT_IN_TMUX then
     vim.notify('Not in a tmux session', vim.log.levels.ERROR)
     return
   end
 
-  if reason == 'no agents found' then
+  if reason == errors.NO_AGENTS_FOUND then
     vim.notify('No agent was found', vim.log.levels.ERROR)
     return
   end
