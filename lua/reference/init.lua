@@ -1,6 +1,5 @@
 local M = {}
 
-local dispatch = require('reference.dispatch')
 local commands = require('reference.commands')
 
 local DEFAULT_CONFIG = {
@@ -10,14 +9,8 @@ local DEFAULT_CONFIG = {
   },
 }
 
-local config = vim.deepcopy(DEFAULT_CONFIG)
-
-function M._send(inputs)
-  dispatch.send(config, inputs)
-end
-
 function M.setup(opts)
-  config = vim.tbl_deep_extend('force', vim.deepcopy(DEFAULT_CONFIG), opts or {})
+  local config = vim.tbl_deep_extend('force', vim.deepcopy(DEFAULT_CONFIG), opts or {})
   commands.register(config)
 end
 
