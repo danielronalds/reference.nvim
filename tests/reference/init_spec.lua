@@ -6,62 +6,64 @@ local function load_reference()
 end
 
 describe('reference.setup config merging', function()
-  local bridge = require('reference.bridge')
+  local commands = require('reference.commands')
   local reference
-  local discover_stub, send_stub, focus_stub
-  local notify_stub, ui_select_stub, create_command_stub
+  local register_stub
 
   before_each(function()
-    discover_stub = stub(bridge, 'discover_agents')
-    send_stub = stub(bridge, 'send')
-    focus_stub = stub(bridge, 'focus')
-    notify_stub = stub(vim, 'notify')
-    ui_select_stub = stub(vim.ui, 'select')
-    create_command_stub = stub(vim.api, 'nvim_create_user_command')
-
+    register_stub = stub(commands, 'register')
     reference = load_reference()
   end)
 
   after_each(function()
-    discover_stub:revert()
-    send_stub:revert()
-    focus_stub:revert()
-    notify_stub:revert()
-    ui_select_stub:revert()
-    create_command_stub:revert()
+    register_stub:revert()
   end)
 
-  it('merges user-supplied tmux.process_names over the defaults', function()
-    local errors = require('reference.errors')
-    discover_stub.returns({}, errors.NO_AGENTS_FOUND)
+  describe('default merge', function()
+    it('calls commands.register once with the default tmux.process_names and switch_to_target = true', function()
+      reference.setup({})
 
-    reference.setup({ tmux = { process_names = { 'custom_agent' } } })
-    reference._send({ path = 'lua/foo.lua' })
-
-    local opts = discover_stub.calls[1].vals[1]
-    assert.are.same({ 'custom_agent' }, opts.process_names)
+      assert.stub(register_stub).was.called(1)
+      local cfg = register_stub.calls[1].vals[1]
+      assert.are.same({ 'claude', 'opencode', 'pi' }, cfg.tmux.process_names)
+      assert.is_true(cfg.tmux.switch_to_target)
+    end)
   end)
 
-  it('merges user-supplied tmux.switch_to_target over the default', function()
-    discover_stub.returns({
-      { pane_id = '%1', session = 'work', window = 'agent', command = 'claude', matched_name = 'claude' },
-    }, nil)
-    send_stub.returns(nil)
+  describe('user overrides', function()
+    it('overrides tmux.process_names while keeping the default switch_to_target', function()
+      reference.setup({ tmux = { process_names = { 'custom_agent' } } })
 
-    reference.setup({ tmux = { switch_to_target = false } })
-    reference._send({ path = 'lua/foo.lua' })
+      assert.stub(register_stub).was.called(1)
+      local cfg = register_stub.calls[1].vals[1]
+      assert.are.same({ 'custom_agent' }, cfg.tmux.process_names)
+      assert.is_true(cfg.tmux.switch_to_target)
+    end)
 
-    assert.stub(focus_stub).was_not.called()
+    it('overrides tmux.switch_to_target while keeping the default process_names', function()
+      reference.setup({ tmux = { switch_to_target = false } })
+
+      assert.stub(register_stub).was.called(1)
+      local cfg = register_stub.calls[1].vals[1]
+      assert.is_false(cfg.tmux.switch_to_target)
+      assert.are.same({ 'claude', 'opencode', 'pi' }, cfg.tmux.process_names)
+    end)
   end)
 
-  it('forwards the configured process_names to bridge.discover_agents', function()
-    local errors = require('reference.errors')
-    discover_stub.returns({}, errors.NO_AGENTS_FOUND)
+  describe('repeated setup calls', function()
+    it('calls commands.register once per setup with the per-call merged config', function()
+      reference.setup({ tmux = { process_names = { 'first_agent' } } })
+      reference.setup({ tmux = { switch_to_target = false } })
 
-    reference.setup({})
-    reference._send({ path = 'lua/foo.lua' })
+      assert.stub(register_stub).was.called(2)
 
-    local opts = discover_stub.calls[1].vals[1]
-    assert.are.same({ 'claude', 'opencode', 'pi' }, opts.process_names)
+      local first_cfg = register_stub.calls[1].vals[1]
+      assert.are.same({ 'first_agent' }, first_cfg.tmux.process_names)
+      assert.is_true(first_cfg.tmux.switch_to_target)
+
+      local second_cfg = register_stub.calls[2].vals[1]
+      assert.are.same({ 'claude', 'opencode', 'pi' }, second_cfg.tmux.process_names)
+      assert.is_false(second_cfg.tmux.switch_to_target)
+    end)
   end)
 end)
