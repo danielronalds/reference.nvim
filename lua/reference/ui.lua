@@ -15,9 +15,7 @@ function M.pick_agent(agents, on_choice)
   vim.ui.select(agents, {
     prompt = 'Send reference to:',
     format_item = M.format_agent,
-  }, function(agent)
-    on_choice(agent)
-  end)
+  }, on_choice)
 end
 
 return M

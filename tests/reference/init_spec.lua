@@ -1,18 +1,12 @@
 local stub = require('luassert.stub')
 
-local function load_reference()
-  package.loaded['reference'] = nil
-  return require('reference')
-end
-
 describe('reference.setup config merging', function()
   local commands = require('reference.commands')
-  local reference
+  local reference = require('reference')
   local register_stub
 
   before_each(function()
     register_stub = stub(commands, 'register')
-    reference = load_reference()
   end)
 
   after_each(function()

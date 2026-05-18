@@ -1,14 +1,10 @@
 local stub = require('luassert.stub')
 
-local function load_dispatch()
-  package.loaded['reference.dispatch'] = nil
-  return require('reference.dispatch')
-end
-
 describe('reference.dispatch.send', function()
   local bridge = require('reference.bridge')
   local errors = require('reference.errors')
-  local dispatch
+  local ui = require('reference.ui')
+  local dispatch = require('reference.dispatch')
   local default_config
   local discover_stub, send_stub, focus_stub
   local notify_stub, pick_agent_stub
@@ -18,11 +14,8 @@ describe('reference.dispatch.send', function()
     send_stub = stub(bridge, 'send')
     focus_stub = stub(bridge, 'focus')
     notify_stub = stub(vim, 'notify')
-
-    local ui = require('reference.ui')
     pick_agent_stub = stub(ui, 'pick_agent')
 
-    dispatch = load_dispatch()
     default_config = {
       tmux = {
         process_names = { 'claude', 'opencode', 'pi' },

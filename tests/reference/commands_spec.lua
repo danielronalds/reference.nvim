@@ -11,7 +11,7 @@ end
 
 describe('reference.commands.register', function()
   local dispatch = require('reference.dispatch')
-  local commands
+  local commands = require('reference.commands')
   local config
   local create_command_stub, dispatch_send_stub, expand_stub, fnamemodify_stub
 
@@ -23,9 +23,6 @@ describe('reference.commands.register', function()
 
     expand_stub.returns('/abs/lua/foo.lua')
     fnamemodify_stub.returns('lua/foo.lua')
-
-    package.loaded['reference.commands'] = nil
-    commands = require('reference.commands')
 
     config = {
       tmux = {
