@@ -10,20 +10,7 @@ local REASON_TOASTS = {
   [errors.NO_AGENTS_FOUND] = 'No agent was found',
 }
 
-local function send_and_focus(config, agent, reference)
-  local send_reason = bridge.send(agent.pane_id, reference)
-  if send_reason then
-    vim.notify('Failed to send reference: ' .. send_reason, vim.log.levels.WARN)
-    return
-  end
-
-  if config.tmux.switch_to_target then
-    local focus_reason = bridge.focus(agent.pane_id)
-    if focus_reason then
-      vim.notify('Failed to focus tmux pane: ' .. focus_reason, vim.log.levels.WARN)
-    end
-  end
-end
+local send_and_focus
 
 function M.send(config, inputs)
   inputs = inputs or {}
@@ -57,6 +44,21 @@ function M.send(config, inputs)
     end
     send_and_focus(config, agent, reference)
   end)
+end
+
+function send_and_focus(config, agent, reference)
+  local send_reason = bridge.send(agent.pane_id, reference)
+  if send_reason then
+    vim.notify('Failed to send reference: ' .. send_reason, vim.log.levels.WARN)
+    return
+  end
+
+  if config.tmux.switch_to_target then
+    local focus_reason = bridge.focus(agent.pane_id)
+    if focus_reason then
+      vim.notify('Failed to focus tmux pane: ' .. focus_reason, vim.log.levels.WARN)
+    end
+  end
 end
 
 return M
