@@ -2,13 +2,13 @@ local M = {}
 
 function M.format_agent(agent)
   local name = agent.matched_name or agent.command or '?'
-  local address = string.format(
+  local location = string.format(
     '%s:%s.%s',
-    agent.session or '?',
+    agent.window or '?',
     tostring(agent.window_index or '?'),
     tostring(agent.pane_index or '?')
   )
-  return string.format('%s  %s (%s)', name, address, agent.window or '?')
+  return string.format('(%s - %s) %s', location, name, agent.session or '?')
 end
 
 function M.pick_agent(agents, on_choice)

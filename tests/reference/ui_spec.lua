@@ -14,7 +14,7 @@ describe('reference.ui.format_agent', function()
 
     local result = ui.format_agent(agent)
 
-    assert.are.equal('claude  work:2.1 (editor)', result)
+    assert.are.equal('(editor:2.1 - claude) work', result)
   end)
 
   describe('with missing fields', function()
@@ -22,32 +22,32 @@ describe('reference.ui.format_agent', function()
       {
         name = "substitutes '?' for a missing session",
         agent = { matched_name = 'claude', window_index = 2, pane_index = 1, window = 'editor' },
-        expected = 'claude  ?:2.1 (editor)',
+        expected = '(editor:2.1 - claude) ?',
       },
       {
         name = "substitutes '?' for a missing window_index",
         agent = { matched_name = 'claude', session = 'work', pane_index = 1, window = 'editor' },
-        expected = 'claude  work:?.1 (editor)',
+        expected = '(editor:?.1 - claude) work',
       },
       {
         name = "substitutes '?' for a missing pane_index",
         agent = { matched_name = 'claude', session = 'work', window_index = 2, window = 'editor' },
-        expected = 'claude  work:2.? (editor)',
+        expected = '(editor:2.? - claude) work',
       },
       {
         name = "substitutes '?' for a missing window",
         agent = { matched_name = 'claude', session = 'work', window_index = 2, pane_index = 1 },
-        expected = 'claude  work:2.1 (?)',
+        expected = '(?:2.1 - claude) work',
       },
       {
         name = "falls back to command when matched_name is missing",
         agent = { command = 'claude', session = 'work', window_index = 2, pane_index = 1, window = 'editor' },
-        expected = 'claude  work:2.1 (editor)',
+        expected = '(editor:2.1 - claude) work',
       },
       {
         name = "falls back to '?' when both matched_name and command are missing",
         agent = { session = 'work', window_index = 2, pane_index = 1, window = 'editor' },
-        expected = '?  work:2.1 (editor)',
+        expected = '(editor:2.1 - ?) work',
       },
     }
 
