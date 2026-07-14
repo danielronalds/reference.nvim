@@ -4,10 +4,11 @@ describe('reference.dispatch.send', function()
   local bridge = require('reference.bridge')
   local errors = require('reference.errors')
   local ui = require('reference.ui')
+  local wade = require('reference.wade')
   local dispatch = require('reference.dispatch')
   local default_config
   local discover_stub, send_stub, focus_stub
-  local notify_stub, pick_agent_stub
+  local notify_stub, pick_agent_stub, wade_send_stub
 
   before_each(function()
     discover_stub = stub(bridge, 'discover_agents')
@@ -15,8 +16,13 @@ describe('reference.dispatch.send', function()
     focus_stub = stub(bridge, 'focus')
     notify_stub = stub(vim, 'notify')
     pick_agent_stub = stub(ui, 'pick_agent')
+    wade_send_stub = stub(wade, 'send')
 
     default_config = {
+      driver = 'tmux',
+      wade = {
+        timeout_seconds = 5,
+      },
       tmux = {
         process_names = { 'claude', 'opencode', 'pi' },
         switch_to_target = true,
@@ -30,6 +36,7 @@ describe('reference.dispatch.send', function()
     focus_stub:revert()
     notify_stub:revert()
     pick_agent_stub:revert()
+    wade_send_stub:revert()
   end)
 
   describe('reference building', function()
@@ -224,6 +231,50 @@ describe('reference.dispatch.send', function()
       dispatch.send(default_config, { path = 'lua/foo.lua' })
 
       assert.stub(pick_agent_stub).was.called(1)
+      assert.stub(send_stub).was_not.called()
+    end)
+  end)
+
+  describe("driver = 'wade'", function()
+    it('sends the built reference through WADE and skips tmux discovery', function()
+      local config = vim.deepcopy(default_config)
+      config.driver = 'wade'
+      wade_send_stub.returns(nil)
+
+      dispatch.send(config, { path = 'lua/foo.lua', range = { line1 = 5, line2 = 12 } })
+
+      assert.stub(wade_send_stub).was.called(1)
+      assert.stub(wade_send_stub).was.called_with(config.wade, '@lua/foo.lua#L5-12')
+      assert.stub(discover_stub).was_not.called()
+      assert.stub(send_stub).was_not.called()
+    end)
+
+    it('notifies when the WADE send fails', function()
+      local config = vim.deepcopy(default_config)
+      config.driver = 'wade'
+      wade_send_stub.returns('WADE_SESSION is not set')
+
+      dispatch.send(config, { path = 'lua/foo.lua' })
+
+      assert.stub(notify_stub).was.called(1)
+      assert.stub(notify_stub).was.called_with(
+        'Failed to send reference to WADE: WADE_SESSION is not set',
+        vim.log.levels.WARN
+      )
+    end)
+  end)
+
+  describe('unknown driver', function()
+    it('notifies and does not send', function()
+      local config = vim.deepcopy(default_config)
+      config.driver = 'unknown'
+
+      dispatch.send(config, { path = 'lua/foo.lua' })
+
+      assert.stub(notify_stub).was.called(1)
+      assert.stub(notify_stub).was.called_with('Unknown reference driver: unknown', vim.log.levels.ERROR)
+      assert.stub(wade_send_stub).was_not.called()
+      assert.stub(discover_stub).was_not.called()
       assert.stub(send_stub).was_not.called()
     end)
   end)

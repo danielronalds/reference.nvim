@@ -3,6 +3,10 @@ local M = {}
 local commands = require('reference.commands')
 
 local DEFAULT_CONFIG = {
+  driver = 'tmux',
+  wade = {
+    timeout_seconds = 5,
+  },
   tmux = {
     process_names = { 'claude', 'opencode', 'pi' },
     switch_to_target = true,

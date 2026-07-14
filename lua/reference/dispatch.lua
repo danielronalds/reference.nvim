@@ -4,13 +4,14 @@ local context = require('reference.context')
 local bridge = require('reference.bridge')
 local errors = require('reference.errors')
 local ui = require('reference.ui')
+local wade = require('reference.wade')
 
 local REASON_TOASTS = {
   [errors.NOT_IN_TMUX]     = 'Not in a tmux session',
   [errors.NO_AGENTS_FOUND] = 'No agent was found',
 }
 
-local send_and_focus
+local send_and_focus, send_via_tmux, send_via_wade
 
 function M.send(config, inputs)
   inputs = inputs or {}
@@ -20,6 +21,28 @@ function M.send(config, inputs)
     return
   end
 
+  local driver = config.driver or 'tmux'
+  if driver == 'wade' then
+    send_via_wade(config, reference)
+    return
+  end
+
+  if driver ~= 'tmux' then
+    vim.notify('Unknown reference driver: ' .. tostring(driver), vim.log.levels.ERROR)
+    return
+  end
+
+  send_via_tmux(config, inputs, reference)
+end
+
+function send_via_wade(config, reference)
+  local send_reason = wade.send(config.wade, reference)
+  if send_reason then
+    vim.notify('Failed to send reference to WADE: ' .. send_reason, vim.log.levels.WARN)
+  end
+end
+
+function send_via_tmux(config, inputs, reference)
   local agents, reason = bridge.discover_agents({ process_names = config.tmux.process_names })
 
   local toast = REASON_TOASTS[reason]

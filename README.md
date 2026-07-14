@@ -1,7 +1,7 @@
 # reference.nvim
 
 A small Neovim plugin for sending file references from your editor to an
-AI CLI agent running in another tmux pane.
+AI CLI agent running in another tmux pane or the current WADE session.
 
 It is heavily inspired by
 [code-bridge.nvim](https://github.com/samir-roy/code-bridge.nvim) and
@@ -38,19 +38,22 @@ The plugin exposes two user commands. Both accept a visual range.
 
 ### `:ReferenceSend`
 
-Send a reference to the current file to an agent running in tmux.
+Send a reference to the current file to an agent running in the configured
+reference driver.
 
 - In normal mode, sends `@path/to/file`.
 - With a visual selection, sends `@path/to/file#L<line1>-<line2>`.
-- If exactly one agent is found, sends to it directly.
-- If more than one agent is found, opens a `vim.ui.select` picker
+- With the default tmux driver, if exactly one agent is found, sends to it directly.
+- With the default tmux driver, if more than one agent is found, opens a `vim.ui.select` picker
   showing each agent's process, session, window, and pane.
+- With the WADE driver, sends to the active agent terminal for the current `WADE_SESSION`.
 
 ### `:ReferenceSendFirst`
 
-Same as `:ReferenceSend`, but skips the picker when multiple agents are
-found and sends to the first one discovered. Useful when bound to a
-keymap and you do not want a prompt in the middle of your flow.
+Same as `:ReferenceSend`, but skips the tmux picker when multiple agents are
+found and sends to the first one discovered. With the WADE driver, this behaves
+the same as `:ReferenceSend`. Useful when bound to a keymap and you do not want
+a prompt in the middle of your flow.
 
 ## Configuration
 
@@ -61,8 +64,16 @@ override defaults.
 
 | Option                  | Type       | Default                          |
 | ----------------------- | ---------- | -------------------------------- |
+| `driver`                | `string`   | `'tmux'`                         |
+| `wade.timeout_seconds`  | `number`   | `5`                              |
 | `tmux.process_names`    | `string[]` | `{ 'claude', 'opencode', 'pi' }` |
 | `tmux.switch_to_target` | `boolean`  | `true`                           |
+
+`driver` can be `'tmux'` or `'wade'`. The tmux driver preserves the original
+behaviour. The WADE driver sends to WADE's local HTTP API using the current
+`WADE_SESSION` environment variable as the project name.
+
+`wade.timeout_seconds` controls the curl timeout for WADE API requests.
 
 `tmux.process_names` is the list of process names to look for when
 discovering agents in tmux panes. Names are also matched against the
@@ -76,9 +87,28 @@ pane are switched to the target agent after sending.
 
 ```lua
 require('reference').setup({
+  driver = 'tmux',
+  wade = {
+    timeout_seconds = 5,
+  },
   tmux = {
     process_names = { 'claude', 'opencode', 'pi' },
     switch_to_target = true,
   },
 })
 ```
+
+### WADE driver
+
+When running Neovim inside a WADE-launched terminal, use:
+
+```lua
+require('reference').setup({
+  driver = 'wade',
+})
+```
+
+The WADE driver reads the project name from `WADE_SESSION`. It resolves the
+server address from `WADE_ADDR`, or falls back to WADE's default local hosts:
+`editor-dev.localhost:8765` when `WADE_DEV` is enabled, otherwise
+`editor.localhost:8765`.

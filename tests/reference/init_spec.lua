@@ -14,11 +14,13 @@ describe('reference.setup config merging', function()
   end)
 
   describe('default merge', function()
-    it('calls commands.register once with the default tmux.process_names and switch_to_target = true', function()
+    it('calls commands.register once with the default driver, WADE timeout, and tmux config', function()
       reference.setup({})
 
       assert.stub(register_stub).was.called(1)
       local cfg = register_stub.calls[1].vals[1]
+      assert.are.equal('tmux', cfg.driver)
+      assert.are.equal(5, cfg.wade.timeout_seconds)
       assert.are.same({ 'claude', 'opencode', 'pi' }, cfg.tmux.process_names)
       assert.is_true(cfg.tmux.switch_to_target)
     end)
@@ -41,6 +43,24 @@ describe('reference.setup config merging', function()
       local cfg = register_stub.calls[1].vals[1]
       assert.is_false(cfg.tmux.switch_to_target)
       assert.are.same({ 'claude', 'opencode', 'pi' }, cfg.tmux.process_names)
+    end)
+
+    it('overrides driver while keeping the default WADE timeout', function()
+      reference.setup({ driver = 'wade' })
+
+      assert.stub(register_stub).was.called(1)
+      local cfg = register_stub.calls[1].vals[1]
+      assert.are.equal('wade', cfg.driver)
+      assert.are.equal(5, cfg.wade.timeout_seconds)
+    end)
+
+    it('overrides wade.timeout_seconds while keeping the default driver', function()
+      reference.setup({ wade = { timeout_seconds = 2 } })
+
+      assert.stub(register_stub).was.called(1)
+      local cfg = register_stub.calls[1].vals[1]
+      assert.are.equal('tmux', cfg.driver)
+      assert.are.equal(2, cfg.wade.timeout_seconds)
     end)
   end)
 
