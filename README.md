@@ -46,7 +46,7 @@ reference driver.
 - With the default tmux driver, if exactly one agent is found, sends to it directly.
 - With the default tmux driver, if more than one agent is found, opens a `vim.ui.select` picker
   showing each agent's process, session, window, and pane.
-- With the WADE driver, sends to the active agent terminal for the current `WADE_SESSION`.
+- With the WADE driver, sends to the configured default agent terminal for the current WADE workspace.
 
 ### `:ReferenceSendFirst`
 
@@ -70,8 +70,9 @@ override defaults.
 | `tmux.switch_to_target` | `boolean`  | `true`                           |
 
 `driver` can be `'tmux'` or `'wade'`. The tmux driver preserves the original
-behaviour. The WADE driver sends to WADE's local HTTP API using the current
-`WADE_SESSION` environment variable as the project name.
+behaviour. The WADE driver uses `WADE_WORKSPACE_ID` to start or reconnect to
+the workspace's configured default agent, then sends the reference to that
+terminal through WADE's local HTTP API.
 
 `wade.timeout_seconds` controls the curl timeout for WADE API requests.
 
@@ -108,7 +109,8 @@ require('reference').setup({
 })
 ```
 
-The WADE driver reads the project name from `WADE_SESSION`. It resolves the
-server address from `WADE_ADDR`, or falls back to WADE's default local hosts:
-`editor-dev.localhost:8765` when `WADE_DEV` is enabled, otherwise
-`editor.localhost:8765`.
+The WADE driver reads the workspace ID from `WADE_WORKSPACE_ID`. It resolves
+the server address from `WADE_ADDR`, or falls back to WADE's default local
+hosts: `editor-dev.localhost:8090` when `WADE_DEV` is enabled, otherwise
+`editor.localhost:8765`. WADE injects the workspace ID and server address into
+its terminal processes.
